@@ -8,7 +8,9 @@ import java.io.File
 
 class QuizRepository(private val context: Context) {
     
-    // 앱 실행 시 assets의 퀴즈 파일들을 files 디렉토리로 복사(나중에 제거 예정)
+    private val progressManager = QuizProgressManager(context)
+    
+    // 앱 실행 시 assets의 퀴즈 파일들을 files 디렉토리로 복사
     suspend fun copyAssetsToFiles() = withContext(Dispatchers.IO) {
         try {
             val quizDataDir = File(context.filesDir, "quiz_data")
@@ -132,5 +134,55 @@ class QuizRepository(private val context: Context) {
             e.printStackTrace()
             null
         }
+    }
+
+    /**
+     * 퀴즈 진행 상태 관련 메소드들
+     */
+    suspend fun startQuiz(quizId: String): Pair<Quiz?, QuizProgressInfo?> = withContext(Dispatchers.IO) {
+        val quiz = loadQuiz(quizId) ?: return@withContext null to null
+        
+        // 기존 진행 상태 확인
+        val existingProgress = progressManager.getQuizProgress(quizId)
+        val progress = if (existingProgress == null || existingProgress.isCompleted) {
+            // 새로 시작하거나 완료된 퀴즈 재시작
+            progressManager.startNewQuiz(quizId, quiz.questions.size)
+        } else {
+            // 기존 진행 상태 유지
+            existingProgress
+        }
+        
+        val progressInfo = progressManager.getQuizProgressInfo(quizId)
+        quiz to progressInfo
+    }
+    
+    suspend fun getCurrentQuestion(quizId: String): Pair<Question?, Int?> = withContext(Dispatchers.IO) {
+        val quiz = loadQuiz(quizId) ?: return@withContext null to null
+        val currentQuestionIndex = progressManager.getCurrentQuestionIndex(quizId) ?: return@withContext null to null
+        
+        val question = quiz.questions.getOrNull(currentQuestionIndex)
+        val progressInfo = progressManager.getQuizProgressInfo(quizId)
+        
+        question to progressInfo?.currentIndex
+    }
+    
+    suspend fun submitAnswer(
+        quizId: String,
+        questionId: String,
+        userAnswers: List<String>,
+        correctAnswers: List<String>
+    ): Boolean = withContext(Dispatchers.IO) {
+        val isCorrect = userAnswers.sorted() == correctAnswers.sorted()
+        progressManager.saveAnswerAndMoveNext(quizId, questionId, userAnswers, correctAnswers, isCorrect)
+    }
+    
+    suspend fun getQuizProgressInfo(quizId: String): QuizProgressInfo? {
+        return progressManager.getQuizProgressInfo(quizId)
+    }
+    
+    suspend fun resetQuiz(quizId: String): Boolean = withContext(Dispatchers.IO) {
+        val quiz = loadQuiz(quizId) ?: return@withContext false
+        progressManager.resetQuiz(quizId, quiz.questions.size)
+        true
     }
 }

@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -306,6 +307,7 @@ fun ResultAnswerOption(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()) // 가로 스크롤 추가
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -327,8 +329,10 @@ fun ResultAnswerOption(
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Medium,
                 color = textColor,
-                modifier = Modifier.weight(1f)
+                maxLines = 1 // 한 줄로 제한
             )
+            
+            Spacer(modifier = Modifier.width(12.dp))
             
             // 정답/오답 표시 아이콘
             if (isCorrectAnswer) {

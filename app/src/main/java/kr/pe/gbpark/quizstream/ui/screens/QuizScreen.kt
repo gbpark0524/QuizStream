@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -236,6 +238,7 @@ fun AnswerButton(
         Row(
             modifier = Modifier
                 .fillMaxSize()
+                .horizontalScroll(rememberScrollState()) // 가로 스크롤 추가
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -252,25 +255,12 @@ fun AnswerButton(
             
             Spacer(modifier = Modifier.width(16.dp))
             
-            // 다중선택일 경우 체크박스 표시
-            /*if (isMultipleChoice) {
-                Checkbox(
-                    checked = isSelected,
-                    onCheckedChange = { onClick() },
-                    colors = CheckboxDefaults.colors(
-                        checkedColor = Blue500,
-                        uncheckedColor = Color.Gray
-                    )
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-            }*/
-            
             Text(
                 text = option.text,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Medium,
                 color = if (isSelected) Blue600 else TextPrimary,
-                modifier = Modifier.weight(1f)
+                maxLines = 1 // 한 줄로 제한
             )
         }
     }

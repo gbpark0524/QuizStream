@@ -9,6 +9,8 @@ import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.launch
 import kr.pe.gbpark.quizstream.data.Quiz
 import kr.pe.gbpark.quizstream.data.QuizRepository
+import kr.pe.gbpark.quizstream.data.Question
+import kr.pe.gbpark.quizstream.data.QuizProgressInfo
 import kr.pe.gbpark.quizstream.ui.screens.QuizFileListScreen
 import kr.pe.gbpark.quizstream.ui.screens.QuizScreen
 import kr.pe.gbpark.quizstream.ui.screens.QuizResultScreen
@@ -21,9 +23,12 @@ fun QuizStreamNavigation(
     val scope = rememberCoroutineScope()
     val repository = remember { QuizRepository(context) }
     
+    var currentQuiz by remember { mutableStateOf<Quiz?>(null) }
+    var currentQuestion by remember { mutableStateOf<Question?>(null) }
     var currentQuestionIndex by remember { mutableStateOf(0) }
-    var selectedQuiz by remember { mutableStateOf<Quiz?>(null) }
+    var totalQuestions by remember { mutableStateOf(0) }
     var userAnswers by remember { mutableStateOf<List<String>>(emptyList()) }
+    var progressInfo by remember { mutableStateOf<QuizProgressInfo?>(null) }
     
     NavHost(
         navController = navController,
@@ -34,12 +39,21 @@ fun QuizStreamNavigation(
                 onQuizSelected = { quizId ->
                     scope.launch {
                         try {
-                            val quiz = repository.loadQuiz(quizId)
-                            if (quiz != null) {
-                                currentQuestionIndex = 0
-                                selectedQuiz = quiz
-                                userAnswers = emptyList()
-                                navController.navigate("quiz_screen")
+                            // 새로운 Room 기반 시스템 사용
+                            val (quiz, progress) = repository.startQuiz(quizId)
+                            if (quiz != null && progress != null) {
+                                currentQuiz = quiz
+                                progressInfo = progress
+                                totalQuestions = quiz.questions.size
+                                
+                                // 현재 문제 가져오기
+                                val (question, displayIndex) = repository.getCurrentQuestion(quizId)
+                                if (question != null && displayIndex != null) {
+                                    currentQuestion = question
+                                    currentQuestionIndex = displayIndex
+                                    userAnswers = emptyList()
+                                    navController.navigate("quiz_screen")
+                                }
                             }
                         } catch (e: Exception) {
                             e.printStackTrace()
@@ -53,18 +67,32 @@ fun QuizStreamNavigation(
         }
         
         composable("quiz_screen") {
-            selectedQuiz?.let { quiz ->
-                if (currentQuestionIndex < quiz.questions.size) {
+            currentQuestion?.let { question ->
+                currentQuiz?.let { quiz ->
                     QuizScreen(
-                        question = quiz.questions[currentQuestionIndex],
+                        question = question,
                         currentQuestionIndex = currentQuestionIndex,
-                        totalQuestions = quiz.questions.size,
+                        totalQuestions = totalQuestions,
                         onAnswerSelected = { answers ->
                             userAnswers = answers
                         },
                         onConfirmAnswer = {
-                            // 결과 화면으로 이동
-                            navController.navigate("quiz_result")
+                            scope.launch {
+                                try {
+                                    // Confirm 버튼을 눌렀을 때 답안 제출 및 상태 저장
+                                    repository.submitAnswer(
+                                        quizId = quiz.id,
+                                        questionId = question.id,
+                                        userAnswers = userAnswers,
+                                        correctAnswers = question.answer
+                                    )
+                                    
+                                    // 결과 화면으로 이동
+                                    navController.navigate("quiz_result")
+                                } catch (e: Exception) {
+                                    e.printStackTrace()
+                                }
+                            }
                         },
                         onCloseQuiz = {
                             navController.popBackStack()
@@ -75,22 +103,31 @@ fun QuizStreamNavigation(
         }
         
         composable("quiz_result") {
-            selectedQuiz?.let { quiz ->
-                if (currentQuestionIndex < quiz.questions.size) {
+            currentQuestion?.let { question ->
+                currentQuiz?.let { quiz ->
                     QuizResultScreen(
-                        question = quiz.questions[currentQuestionIndex],
+                        question = question,
                         userAnswers = userAnswers,
                         currentQuestionIndex = currentQuestionIndex,
-                        totalQuestions = quiz.questions.size,
+                        totalQuestions = totalQuestions,
                         onNextQuestion = {
-                            if (currentQuestionIndex < quiz.questions.size - 1) {
-                                currentQuestionIndex++
-                                userAnswers = emptyList()
-                                navController.popBackStack()
-                                navController.navigate("quiz_screen")
-                            } else {
-                                // 퀴즈 완료 - 메인으로 돌아가기
-                                navController.popBackStack("quiz_file_list", false)
+                            scope.launch {
+                                try {
+                                    // 다음 문제 버튼을 눌렀을 때는 단순히 다음 문제로 이동
+                                    val (nextQuestion, nextDisplayIndex) = repository.getCurrentQuestion(quiz.id)
+                                    if (nextQuestion != null && nextDisplayIndex != null) {
+                                        currentQuestion = nextQuestion
+                                        currentQuestionIndex = nextDisplayIndex
+                                        userAnswers = emptyList()
+                                        navController.popBackStack()
+                                        navController.navigate("quiz_screen")
+                                    } else {
+                                        // 더 이상 문제가 없으면 퀴즈 완료
+                                        navController.popBackStack("quiz_file_list", false)
+                                    }
+                                } catch (e: Exception) {
+                                    e.printStackTrace()
+                                }
                             }
                         },
                         onCloseQuiz = {
