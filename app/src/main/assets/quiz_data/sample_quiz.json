@@ -1,0 +1,55 @@
+{
+    "title": "Sample Quiz",
+    "questions": [
+        {
+            "id": "Q1",
+            "question": "What is the capital of France?",
+            "type": "single_choice",
+            "options": [
+                {
+                    "label": "A",
+                    "text": "Berlin"
+                },
+                {
+                    "label": "B", 
+                    "text": "Paris"
+                },
+                {
+                    "label": "C",
+                    "text": "Madrid"
+                },
+                {
+                    "label": "D",
+                    "text": "Rome"
+                }
+            ],
+            "answer": ["B"],
+            "explanation": "Paris has been the capital of France since 508 AD."
+        },
+        {
+            "id": "Q2",
+            "question": "Which of the following are programming languages? (Multiple answers)",
+            "type": "multiple_choice", 
+            "options": [
+                {
+                    "label": "A",
+                    "text": "Python"
+                },
+                {
+                    "label": "B",
+                    "text": "HTML"
+                },
+                {
+                    "label": "C", 
+                    "text": "JavaScript"
+                },
+                {
+                    "label": "D",
+                    "text": "CSS"
+                }
+            ],
+            "answer": ["A", "C"],
+            "explanation": "Python and JavaScript are programming languages. HTML and CSS are markup and styling languages respectively."
+        }
+    ]
+}
