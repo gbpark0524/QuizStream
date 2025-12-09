@@ -1,30 +1,41 @@
 package kr.pe.gbpark.quizstream.data
 
 import android.content.Context
+import android.os.Environment
+import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.File
 
 class QuizRepository(private val context: Context) {
-    
+
     private val progressManager = QuizProgressManager(context)
-    
-    // 앱 실행 시 assets의 퀴즈 파일들을 files 디렉토리로 복사
+
+    private fun getQuizDir(): File {
+        val documentDir =
+            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS)
+        val targetDir = File(documentDir, "quizstream")
+
+        Log.d("QuizRepository", "Target Dir: ${targetDir.absolutePath}")
+
+        return targetDir
+    }
+
     suspend fun copyAssetsToFiles() = withContext(Dispatchers.IO) {
         try {
-            val quizDataDir = File(context.filesDir, "quiz_data")
+            val quizDataDir = getQuizDir()
             if (!quizDataDir.exists()) {
-                quizDataDir.mkdirs()
+                quizDataDir.mkdirs() // 폴더 없으면 생성
             }
-            
+
             val assetManager = context.assets
             val assetFiles = assetManager.list("quiz_data") ?: emptyArray()
-            
+
             assetFiles.filter { it.endsWith(".json") }.forEach { fileName ->
                 val targetFile = File(quizDataDir, fileName)
-                
-                // 파일이 이미 존재하지 않을 때만 복사 (사용자가 추가한 파일 보호)
+
+                // 파일이 없을 때만 복사
                 if (!targetFile.exists()) {
                     assetManager.open("quiz_data/$fileName").use { inputStream ->
                         targetFile.outputStream().use { outputStream ->
@@ -42,16 +53,20 @@ class QuizRepository(private val context: Context) {
         val quizFiles = mutableListOf<QuizFile>()
 
         try {
-            // app/files/quiz_data 폴더의 모든 JSON 파일 목록 가져오기
-            val quizDataDir = File(context.filesDir, "quiz_data")
+            // [수정됨] 여기도 반드시 getQuizDir()를 써야 합니다!
+            // 예전 코드인 context.filesDir를 쓰면 안 됩니다.
+            val quizDataDir = getQuizDir()
+
+            Log.d("QuizRepository", "Loading files from: ${quizDataDir.absolutePath}")
 
             if (quizDataDir.exists()) {
                 val files = quizDataDir.listFiles { _, name -> name.endsWith(".json") }
 
+                Log.d("QuizRepository", "Found files count: ${files?.size ?: 0}")
+
                 files?.forEach { file ->
                     try {
                         val jsonString = file.readText()
-
                         val jsonObject = JSONObject(jsonString)
                         val title = jsonObject.getString("title")
                         val questionsArray = jsonObject.getJSONArray("questions")
@@ -66,8 +81,11 @@ class QuizRepository(private val context: Context) {
                         )
                     } catch (e: Exception) {
                         e.printStackTrace()
+                        Log.e("QuizRepository", "Error parsing file: ${file.name}", e)
                     }
                 }
+            } else {
+                Log.w("QuizRepository", "Directory does not exist")
             }
         } catch (e: Exception) {
             e.printStackTrace()
@@ -75,24 +93,25 @@ class QuizRepository(private val context: Context) {
 
         quizFiles.sortedBy { it.name }
     }
-    
+
     suspend fun loadQuiz(quizId: String): Quiz? = withContext(Dispatchers.IO) {
         try {
             val fileName = "$quizId.json"
-            val quizFile = File(File(context.filesDir, "quiz_data"), fileName)
+            // [수정됨] 여기도 getQuizDir() 사용
+            val quizFile = File(getQuizDir(), fileName)
             val jsonString = quizFile.readText()
-            
+
+            // ... (아래 파싱 로직은 기존과 동일)
             val jsonObject = JSONObject(jsonString)
             val title = jsonObject.getString("title")
             val questionsArray = jsonObject.getJSONArray("questions")
-            
+
             val questions = mutableListOf<Question>()
             for (i in 0 until questionsArray.length()) {
                 val questionObj = questionsArray.getJSONObject(i)
                 val optionsArray = questionObj.getJSONArray("options")
                 val answerArray = questionObj.getJSONArray("answer")
-                
-                // 선택지를 QuestionOption 객체로 변환
+
                 val options = mutableListOf<QuestionOption>()
                 for (j in 0 until optionsArray.length()) {
                     val optionObj = optionsArray.getJSONObject(j)
@@ -103,16 +122,15 @@ class QuizRepository(private val context: Context) {
                         )
                     )
                 }
-                
-                // 정답 라벨들을 문자열 리스트로 변환
+
                 val answers = mutableListOf<String>()
                 for (k in 0 until answerArray.length()) {
                     answers.add(answerArray.getString(k))
                 }
-                
+
                 val explanation = questionObj.optString("explanation", "")
                 val type = questionObj.getString("type")
-                
+
                 questions.add(
                     Question(
                         id = questionObj.getString("id"),
@@ -124,7 +142,7 @@ class QuizRepository(private val context: Context) {
                     )
                 )
             }
-            
+
             Quiz(
                 id = quizId,
                 title = title,
@@ -136,36 +154,29 @@ class QuizRepository(private val context: Context) {
         }
     }
 
-    /**
-     * 퀴즈 진행 상태 관련 메소드들
-     */
-    suspend fun startQuiz(quizId: String): Pair<Quiz?, QuizProgressInfo?> = withContext(Dispatchers.IO) {
-        val quiz = loadQuiz(quizId) ?: return@withContext null to null
-        
-        // 기존 진행 상태 확인
-        val existingProgress = progressManager.getQuizProgress(quizId)
-        val progress = if (existingProgress == null || existingProgress.isCompleted) {
-            // 새로 시작하거나 완료된 퀴즈 재시작
-            progressManager.startNewQuiz(quizId, quiz.questions.size)
-        } else {
-            // 기존 진행 상태 유지
-            existingProgress
+    suspend fun startQuiz(quizId: String): Pair<Quiz?, QuizProgressInfo?> =
+        withContext(Dispatchers.IO) {
+            val quiz = loadQuiz(quizId) ?: return@withContext null to null
+            val existingProgress = progressManager.getQuizProgress(quizId)
+            val progress = if (existingProgress == null || existingProgress.isCompleted) {
+                progressManager.startNewQuiz(quizId, quiz.questions.size)
+            } else {
+                existingProgress
+            }
+            val progressInfo = progressManager.getQuizProgressInfo(quizId)
+            quiz to progressInfo
         }
-        
-        val progressInfo = progressManager.getQuizProgressInfo(quizId)
-        quiz to progressInfo
-    }
-    
-    suspend fun getCurrentQuestion(quizId: String): Pair<Question?, Int?> = withContext(Dispatchers.IO) {
-        val quiz = loadQuiz(quizId) ?: return@withContext null to null
-        val currentQuestionIndex = progressManager.getCurrentQuestionIndex(quizId) ?: return@withContext null to null
-        
-        val question = quiz.questions.getOrNull(currentQuestionIndex)
-        val progressInfo = progressManager.getQuizProgressInfo(quizId)
-        
-        question to progressInfo?.currentIndex
-    }
-    
+
+    suspend fun getCurrentQuestion(quizId: String): Pair<Question?, Int?> =
+        withContext(Dispatchers.IO) {
+            val quiz = loadQuiz(quizId) ?: return@withContext null to null
+            val currentQuestionIndex =
+                progressManager.getCurrentQuestionIndex(quizId) ?: return@withContext null to null
+            val question = quiz.questions.getOrNull(currentQuestionIndex)
+            val progressInfo = progressManager.getQuizProgressInfo(quizId)
+            question to progressInfo?.currentIndex
+        }
+
     suspend fun submitAnswer(
         quizId: String,
         questionId: String,
@@ -173,13 +184,19 @@ class QuizRepository(private val context: Context) {
         correctAnswers: List<String>
     ): Boolean = withContext(Dispatchers.IO) {
         val isCorrect = userAnswers.sorted() == correctAnswers.sorted()
-        progressManager.saveAnswerAndMoveNext(quizId, questionId, userAnswers, correctAnswers, isCorrect)
+        progressManager.saveAnswerAndMoveNext(
+            quizId,
+            questionId,
+            userAnswers,
+            correctAnswers,
+            isCorrect
+        )
     }
-    
+
     suspend fun getQuizProgressInfo(quizId: String): QuizProgressInfo? {
         return progressManager.getQuizProgressInfo(quizId)
     }
-    
+
     suspend fun resetQuiz(quizId: String): Boolean = withContext(Dispatchers.IO) {
         val quiz = loadQuiz(quizId) ?: return@withContext false
         progressManager.resetQuiz(quizId, quiz.questions.size)
