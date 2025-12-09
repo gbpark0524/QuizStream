@@ -35,17 +35,17 @@ captures/
 
 # IntelliJ
 *.iml
-.idea/workspace.xml
-.idea/tasks.xml
-.idea/gradle.xml
-.idea/assetWizardSettings.xml
-.idea/dictionaries
-.idea/libraries
-.idea/caches
-.idea/modules.xml
-.idea/navEditor.xml
-# Comment next line if keeping position of elements in Navigation Editor is desired
-.idea/navEditor.xml
+/.idea/deploymentTargetSelector.xml
+/.idea/codeStyles/Project.xml
+/.idea/workspace.xml
+/.idea/tasks.xml
+/.idea/gradle.xml
+/.idea/assetWizardSettings.xml
+/.idea/dictionaries
+/.idea/libraries
+/.idea/caches
+/.idea/modules.xml
+/.idea/navEditor.xml
 
 # External native build folder generated in Android Studio 2.2 and later
 .externalNativeBuild
