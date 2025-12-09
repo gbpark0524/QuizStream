@@ -2,6 +2,7 @@ package kr.pe.gbpark.quizstream.navigation
 
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -101,8 +102,47 @@ fun QuizStreamNavigation(
                 }
             }
         }
-        
+
         composable("quiz_result") {
+            // [추가] 다이얼로그 표시 여부와 점수 텍스트를 저장할 상태 변수
+            var showCompletionDialog by remember { mutableStateOf(false) }
+            var completionMessage by remember { mutableStateOf("") }
+
+            // [추가] 퀴즈 완료 알림창 (점수 표시)
+            if (showCompletionDialog) {
+                androidx.compose.material3.AlertDialog(
+                    onDismissRequest = { /* 밖을 눌러도 안 닫히게 하려면 비워둠 */ },
+                    title = {
+                        androidx.compose.material3.Text(
+                            text = "퀴즈 완료!",
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                        )
+                    },
+                    text = {
+                        androidx.compose.material3.Text(
+                            text = completionMessage,
+                            fontSize = 16.sp
+                        )
+                    },
+                    confirmButton = {
+                        androidx.compose.material3.Button(
+                            onClick = {
+                                scope.launch {
+                                    currentQuiz?.let { quiz ->
+                                        // [여기서 리셋 및 이동 수행]
+                                        repository.resetQuiz(quiz.id)
+                                        showCompletionDialog = false
+                                        navController.popBackStack("quiz_file_list", false)
+                                    }
+                                }
+                            }
+                        ) {
+                            androidx.compose.material3.Text("확인")
+                        }
+                    }
+                )
+            }
+
             currentQuestion?.let { question ->
                 currentQuiz?.let { quiz ->
                     QuizResultScreen(
@@ -113,20 +153,39 @@ fun QuizStreamNavigation(
                         onNextQuestion = {
                             scope.launch {
                                 try {
-                                    // 다음 문제 버튼을 눌렀을 때는 단순히 다음 문제로 이동
-                                    val (nextQuestion, nextDisplayIndex) = repository.getCurrentQuestion(quiz.id)
-                                    if (nextQuestion != null && nextDisplayIndex != null) {
-                                        currentQuestion = nextQuestion
-                                        currentQuestionIndex = nextDisplayIndex
-                                        userAnswers = emptyList()
-                                        navController.popBackStack()
-                                        navController.navigate("quiz_screen")
+                                    if (currentQuestionIndex < totalQuestions - 1) {
+                                        // 1. 다음 문제가 있을 때 (기존 로직 동일)
+                                        val (nextQuestion, nextDisplayIndex) = repository.getCurrentQuestion(quiz.id)
+                                        if (nextQuestion != null && nextDisplayIndex != null) {
+                                            currentQuestion = nextQuestion
+                                            currentQuestionIndex = nextDisplayIndex
+                                            userAnswers = emptyList()
+
+                                            navController.popBackStack()
+                                            navController.navigate("quiz_screen")
+                                        }
                                     } else {
-                                        // 더 이상 문제가 없으면 퀴즈 완료
-                                        navController.popBackStack("quiz_file_list", false)
+                                        // 2. 마지막 문제일 때 -> 점수 계산 후 다이얼로그 띄우기
+                                        val info = repository.getQuizProgressInfo(quiz.id)
+                                        if (info != null) {
+                                            val percent = (info.correctCount.toFloat() / info.totalQuestions.toFloat()) * 100
+
+                                            // 메시지 생성 (예: "총 10문제 중 8문제 정답 (80%)")
+                                            completionMessage = "수고하셨습니다!\n\n" +
+                                                    "총 ${info.totalQuestions}문제 중 ${info.correctCount}문제 정답\n" +
+                                                    "정답률: ${String.format("%.1f", percent)}%"
+
+                                            // 다이얼로그 표시 (리셋은 다이얼로그 버튼에서 함)
+                                            showCompletionDialog = true
+                                        } else {
+                                            // 정보 로드 실패 시 그냥 나감
+                                            repository.resetQuiz(quiz.id)
+                                            navController.popBackStack("quiz_file_list", false)
+                                        }
                                     }
                                 } catch (e: Exception) {
                                     e.printStackTrace()
+                                    navController.popBackStack("quiz_file_list", false)
                                 }
                             }
                         },

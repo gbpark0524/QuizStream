@@ -1,8 +1,10 @@
 package kr.pe.gbpark.quizstream.ui.screens
 
+import android.os.Environment
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,11 +13,12 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -24,8 +27,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -42,11 +43,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import kr.pe.gbpark.quizstream.data.Question
 import kr.pe.gbpark.quizstream.data.QuestionOption
 import kr.pe.gbpark.quizstream.ui.theme.BackgroundLight
@@ -58,6 +61,7 @@ import kr.pe.gbpark.quizstream.ui.theme.SurfaceWhite
 import kr.pe.gbpark.quizstream.ui.theme.TextOnBlue
 import kr.pe.gbpark.quizstream.ui.theme.TextPrimary
 import kr.pe.gbpark.quizstream.ui.theme.TextSecondary
+import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -69,12 +73,12 @@ fun QuizScreen(
     onConfirmAnswer: () -> Unit = {},
     onCloseQuiz: () -> Unit = {}
 ) {
-    var selectedAnswers by remember(question.id) { 
-        mutableStateOf<Set<String>>(emptySet()) 
+    var selectedAnswers by remember(question.id) {
+        mutableStateOf<Set<String>>(emptySet())
     }
-    
+
     val isMultipleChoice = question.type == "multiple_choice"
-    
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -105,7 +109,7 @@ fun QuizScreen(
                 containerColor = BackgroundLight
             )
         )
-        
+
         // Progress Bar
         Box(
             modifier = Modifier
@@ -122,7 +126,7 @@ fun QuizScreen(
                 trackColor = Color(0xFFE0E0E0)
             )
         }
-        
+
         // Question Section
         Box(
             modifier = Modifier
@@ -131,7 +135,32 @@ fun QuizScreen(
                 .padding(24.dp),
             contentAlignment = Alignment.Center
         ) {
-            Column {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally // 이미지와 텍스트 중앙 정렬
+            ) {
+                val imageFile = remember(question.id) {
+                    val root = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS)
+                    val quizDir = File(root, "quizstream/${question.quizFileId}")
+
+                    quizDir.listFiles { _, name ->
+                        name.substringBeforeLast(".") == question.id
+                    }?.firstOrNull()
+                }
+
+                // 찾은 파일이 있으면 표시
+                if (imageFile != null && imageFile.exists()) {
+                    AsyncImage(
+                        model = imageFile,
+                        contentDescription = "Question Image",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 250.dp)
+                            .padding(bottom = 16.dp)
+                            .clip(RoundedCornerShape(8.dp)),
+                        contentScale = ContentScale.Fit
+                    )
+                }
+
                 Text(
                     text = question.question,
                     fontSize = 18.sp,
@@ -140,8 +169,7 @@ fun QuizScreen(
                     textAlign = TextAlign.Center,
                     lineHeight = 28.sp
                 )
-                
-                // 다중선택 안내
+
                 if (isMultipleChoice) {
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
@@ -155,10 +183,10 @@ fun QuizScreen(
                 }
             }
         }
-        
+
         // Answer Section - Optimized for one-handed use
         Column(
-            modifier = Modifier.padding(5.dp),
+            modifier = Modifier.padding(5.dp).navigationBarsPadding(),
             verticalArrangement = Arrangement.spacedBy(5.dp)
         ) {
             question.options.forEach { option ->
@@ -166,7 +194,7 @@ fun QuizScreen(
                     option = option,
                     isSelected = selectedAnswers.contains(option.label),
                     isMultipleChoice = isMultipleChoice,
-                    onClick = { 
+                    onClick = {
                         selectedAnswers = if (isMultipleChoice) {
                             // 다중선택: 토글 방식
                             if (selectedAnswers.contains(option.label)) {
@@ -182,13 +210,13 @@ fun QuizScreen(
                     }
                 )
             }
-            
+
             Spacer(modifier = Modifier.height(2.dp))
-            
+
             // Confirm Button
             Button(
                 onClick = {
-                    if (selectedAnswers.isNotEmpty()) { 
+                    if (selectedAnswers.isNotEmpty()) {
                         onConfirmAnswer()
                     }
                 },
@@ -252,9 +280,9 @@ fun AnswerButton(
                     .size(24.dp)
                     .wrapContentSize(Alignment.Center)
             )
-            
+
             Spacer(modifier = Modifier.width(16.dp))
-            
+
             Text(
                 text = option.text,
                 fontSize = 18.sp,
@@ -273,6 +301,7 @@ fun QuizScreenPreview() {
         QuizScreen(
             question = Question(
                 id = "preview",
+                quizFileId = "preview",
                 question = "회사는 독점 애플리케이션의 로그 파일을 분석할 수 있는 능력이 필요합니다. 로그는 Amazon S3 버킷에 JSON 형식으로 저장됩니다. 쿼리는 간단하고 주문형으로 실행됩니다. 솔루션 설계자는 기존 아키텍처에 대한 최소한의 변경으로 분석을 수행해야 합니다. 솔루션 설계자는 최소한의 운영 오버헤드로 이러한 요구 사항을 충족하기 위해 무엇을 해야 합니까?",
                 type = "multiple_choice",
                 options = listOf(

@@ -14,6 +14,7 @@ data class QuestionOption(
 
 data class Question(
     val id: String,
+    val quizFileId: String,
     val question: String,
     val type: String, // "single_choice" 또는 "multiple_choice"
     val options: List<QuestionOption>,

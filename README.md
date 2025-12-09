@@ -67,7 +67,7 @@ app/src/main/java/kr/pe/gbpark/quizstream/
     {
       "id": "Q1",
       "question": "문제 내용",
-      "type": "single_choice", // 또는 "multiple_choice"
+      "type": "single_choice",
       "options": [
         {
           "label": "A",
@@ -78,7 +78,7 @@ app/src/main/java/kr/pe/gbpark/quizstream/
           "text": "선택지 2"
         }
       ],
-      "answer": ["A"], // 정답 라벨들
+      "answer": ["A"],
       "explanation": "해설 내용 (선택사항)"
     }
   ]

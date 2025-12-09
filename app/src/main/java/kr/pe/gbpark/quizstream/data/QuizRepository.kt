@@ -134,6 +134,7 @@ class QuizRepository(private val context: Context) {
                 questions.add(
                     Question(
                         id = questionObj.getString("id"),
+                        quizFileId = quizId,
                         question = questionObj.getString("question"),
                         type = type,
                         options = options,

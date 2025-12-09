@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -36,7 +37,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -69,11 +72,17 @@ fun QuizResultScreen(
     onNextQuestion: () -> Unit = {},
     onCloseQuiz: () -> Unit = {}
 ) {
-    val isCorrect = userAnswers.sorted() == question.answer.sorted()
+    val frozenQuestion = remember { question }
+    val frozenUserAnswers = remember { userAnswers }
+
+    // 기존의 isCorrect 계산 등도 frozen 변수를 사용해야 합니다.
+    val isCorrect = frozenUserAnswers.sorted() == frozenQuestion.answer.sorted()
     val scrollState = rememberScrollState()
-    
-    var showQuestion by remember { mutableStateOf(false) }
-    var showOptions by remember { mutableStateOf(false) }
+
+    var showQuestion by remember(question.id) { mutableStateOf(false) }
+    var showOptions by remember(question.id) { mutableStateOf(false) }
+
+    LaunchedEffect(question.id) { scrollState.scrollTo(0) }
     
     Column(
         modifier = Modifier
@@ -144,7 +153,7 @@ fun QuizResultScreen(
                 onToggle = { showQuestion = !showQuestion }
             ) {
                 Text(
-                    text = question.question,
+                    text = frozenQuestion.question,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Medium,
                     color = TextPrimary,
@@ -163,11 +172,11 @@ fun QuizResultScreen(
                 Column(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    question.options.forEach { option ->
+                    frozenQuestion.options.forEach { option ->
                         ResultAnswerOption(
                             option = option,
-                            isUserAnswer = userAnswers.contains(option.label),
-                            isCorrectAnswer = question.answer.contains(option.label)
+                            isUserAnswer = frozenUserAnswers.contains(option.label),
+                            isCorrectAnswer = frozenQuestion.answer.contains(option.label)
                         )
                     }
                 }
@@ -176,7 +185,7 @@ fun QuizResultScreen(
             Spacer(modifier = Modifier.height(20.dp))
             
             // Explanation Section (if available)
-            if (question.explanation.isNotBlank()) {
+            if (frozenQuestion.explanation.isNotBlank()) {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
@@ -195,7 +204,7 @@ fun QuizResultScreen(
                         )
                         
                         Text(
-                            text = question.explanation,
+                            text = frozenQuestion.explanation,
                             fontSize = 16.sp,
                             color = TextPrimary,
                             lineHeight = 24.sp
@@ -214,6 +223,7 @@ fun QuizResultScreen(
                 .fillMaxWidth()
                 .background(BackgroundLight)
                 .padding(24.dp)
+                .navigationBarsPadding()
         ) {
             Button(
                 onClick = onNextQuestion,
@@ -361,6 +371,7 @@ fun QuizResultScreenCorrectPreview() {
         QuizResultScreen(
             question = Question(
                 id = "preview",
+                quizFileId = "preview",
                 question = "회사는 독점 애플리케이션의 로그 파일을 분석할 수 있는 능력이 필요합니다. 로그는 Amazon S3 버킷에 JSON 형식으로 저장됩니다. 쿼리는 간단하고 주문형으로 실행됩니다. 솔루션 설계자는 기존 아키텍처에 대한 최소한의 변경으로 분석을 수행해야 합니다. 솔루션 설계자는 최소한의 운영 오버헤드로 이러한 요구 사항을 충족하기 위해 무엇을 해야 합니까?",
                 type = "single_choice",
                 options = listOf(
@@ -440,6 +451,7 @@ fun QuizResultScreenIncorrectPreview() {
         QuizResultScreen(
             question = Question(
                 id = "preview",
+                quizFileId = "preview",
                 question = "다음 중 Amazon S3의 스토리지 클래스가 아닌 것은?",
                 type = "multiple_choice",
                 options = listOf(

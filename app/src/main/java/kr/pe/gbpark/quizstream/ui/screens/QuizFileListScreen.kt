@@ -128,7 +128,7 @@ fun QuizFileListScreen(
         
         // Start Quiz Button
         Box(
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier.padding(16.dp).navigationBarsPadding()
         ) {
             Button(
                 onClick = { 
