@@ -2,6 +2,14 @@
 
 간편하게 문제은행을 한손으로 풀어보고 기록하는 안드로이드 앱
 
+<div style="overflow-x: auto; white-space: nowrap; padding-bottom: 10px;">
+  <img src="https://github.com/user-attachments/assets/4e7b2a6d-15b7-408a-91cc-63d8ec908334" width="250" alt="메인 화면" style="display: inline-block; margin-right: 10px;">
+  <img src="https://github.com/user-attachments/assets/c35f134f-a15a-4815-b544-f2cc57c993e6" width="250" alt="퀴즈 화면" style="display: inline-block; margin-right: 10px;">
+  <img src="https://github.com/user-attachments/assets/d0932bf1-f948-4e66-aecd-8f7fe8f1c38b" width="250" alt="정답 화면" style="display: inline-block; margin-right: 10px;">
+  <img src="https://github.com/user-attachments/assets/07819ed9-eea8-49c5-ad7f-df814976c9c9" width="250" alt="결과 화면" style="display: inline-block; margin-right: 10px;">
+  <img src="https://github.com/user-attachments/assets/32936b1c-8684-420b-8b64-3210aad67ffd" width="250" alt="설정 화면" style="display: inline-block;">
+</div>
+
 ## ✨ 주요 기능
 
 - **📚 문제 파일 관리**: JSON 형식의 퀴즈 파일 지원
@@ -128,13 +136,13 @@ adb install app/build/outputs/apk/debug/app-debug.apk
 - [ ] 사용자 통계 및 진행률 저장
 - [ ] 즐겨찾기 문제 기능
 - [ ] 오답노트 기능
-- [ ] 다크 테마 지원
-- [ ] 문제 검색 기능
-- [ ] 온라인 문제 동기화
+- [ ] 다크 테마
+- [ ] 문제 수정기능
+- [ ] 다양한 문제들 등록 형태
 
 ## 📝 라이선스
 
-이 프로젝트는 개인 학습 목적으로 제작되었습니다.
+이 프로젝트는 개인 학습 및 사용 목적으로 제작되었습니다.
 
 ## 👨‍💻 개발자
 
